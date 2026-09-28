@@ -5,9 +5,18 @@ import usersFromServer from './api/users';
 import todosFromServer from './api/todos';
 
 import { TodoList } from './components/TodoList';
+import { Todo } from './components/TodoInfo'; // Импортируем тип для строгой типизации
 
 export const App = () => {
-  const [todos, setTodos] = useState(todosFromServer);
+  // Связываем задачи с пользователями при инициализации
+  const [todos, setTodos] = useState<Todo[]>(() => {
+    return todosFromServer.map(todo => ({
+      ...todo,
+      // Находим пользователя по userId и жестко привязываем (оператор ! говорит TS, что юзер точно найдется)
+      user: usersFromServer.find(u => u.id === todo.userId)!,
+    }));
+  });
+
   const [title, setTitle] = useState('');
   const [userId, setUserId] = useState<number>(0);
 
@@ -16,11 +25,8 @@ export const App = () => {
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Оставляем только буквы (en, ua), цифры и пробелы
-    const sanitizedTitle = e.target.value.replace(
-      /[^a-zA-Zа-яА-ЯіІїЇєЄґҐ0-9 ]/g,
-      '',
-    );
-
+    const sanitizedTitle = e.target.value.replace(/[^a-zA-Zа-яА-ЯіІїЇєЄґҐ0-9 ]/g, '');
+    
     setTitle(sanitizedTitle);
     setHasTitleError(false); // Прячем ошибку сразу при вводе
   };
@@ -32,28 +38,23 @@ export const App = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
+    
     const trimmedTitle = title.trim();
     const isTitleInvalid = !trimmedTitle;
     const isUserInvalid = userId === 0;
 
     // Показываем ошибки только после нажатия на кнопку
-    if (isTitleInvalid) {
-      setHasTitleError(true);
-    }
-
-    if (isUserInvalid) {
-      setHasUserError(true);
-    }
+    if (isTitleInvalid) setHasTitleError(true);
+    if (isUserInvalid) setHasUserError(true);
 
     if (isTitleInvalid || isUserInvalid) {
       return;
     }
 
     const nextId = todos.length > 0 ? Math.max(...todos.map(t => t.id)) + 1 : 1;
-    const selectedUser = usersFromServer.find(u => u.id === userId);
+    const selectedUser = usersFromServer.find(u => u.id === userId)!;
 
-    const newTodo = {
+    const newTodo: Todo = {
       id: nextId,
       title: trimmedTitle,
       userId,
@@ -62,7 +63,7 @@ export const App = () => {
     };
 
     setTodos([...todos, newTodo]);
-
+    
     // Очищаем форму после успешного добавления
     setTitle('');
     setUserId(0);
